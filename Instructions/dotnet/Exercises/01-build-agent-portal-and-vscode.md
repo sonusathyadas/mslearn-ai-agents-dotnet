@@ -23,7 +23,7 @@ Before starting this exercise, ensure you have:
 
 - An [Azure subscription](https://azure.microsoft.com/free/) with sufficient permissions and quota to provision Azure AI resources
 - [Visual Studio Code](https://code.visualstudio.com/) installed on your local machine
-- [.NET 8 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
+- [.NET 10 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
 - [Git](https://git-scm.com/downloads) installed on your local machine
 - Basic familiarity with Azure AI services and Python programming
 
@@ -220,9 +220,9 @@ Now let's create a .NET application that interacts with your agent programmatica
 
 1. When prompted, select **Open** to open the cloned repository in VS Code.
 
-1. Once the repository opens, select **File > Open Folder** and navigate to `mslearn-ai-agents-dotnet/Labfiles/01-build-agent-portal-and-vscode/dotnet`, then click **Select Folder**.
+1. Once the repository opens, select **File > Open Folder** and navigate to `mslearn-ai-agents-dotnet/Labfiles/01-build-agent-portal-and-vscode/dotnet/AgentWithFunctions`, then click **Select Folder**.
 
-1. In the Explorer pane, open the `agent_with_functions.py` file. You'll see it's currently empty.
+1. In the Explorer pane, open the `Propgram.cs` file. You'll see it's currently empty.
 
 1. Add the following code to the file:
 
