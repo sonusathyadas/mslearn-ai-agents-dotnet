@@ -26,6 +26,12 @@ package.json
 package-lock.json
 uplevelenv/
 
+# C extensions
+**/bin/
+**/obj/
+**/.vs/
+
+
 # Virtual environments
 venv/
 env/

@@ -1,11 +1,3 @@
----
-lab:
-    title: 'Build AI agents with portal and VS Code'
-    description: 'Create an AI agent using both Microsoft Foundry portal and VS Code extension with built-in tools like file search and code interpreter.'
-    level: 300
-    duration: 45
-    islab: true
----
 
 # Build AI agents with portal and VS Code
 
@@ -210,9 +202,9 @@ Before writing any code, you can interact with your agent directly in the extens
 
     > **Tip**: You can use this built-in playground to quickly test your agent's instructions and knowledge without writing any code.
 
-### Create a Python application
+### Create a .NET application
 
-Now let's create a Python application that interacts with your agent programmatically.
+Now let's create a .NET application that interacts with your agent programmatically.
 
 1. In VS Code, open the Command Palette (**Ctrl+Shift+P** or **View > Command Palette**).
 
@@ -221,140 +213,109 @@ Now let's create a Python application that interacts with your agent programmati
 1. Enter the repository URL:
 
     ```
-    https://github.com/MicrosoftLearning/mslearn-ai-agents.git
+    https://github.com/sonusathyadas/mslearn-ai-agents-dotnet.git
     ```
 
 1. Choose a location on your local machine to clone the repository.
 
 1. When prompted, select **Open** to open the cloned repository in VS Code.
 
-1. Once the repository opens, select **File > Open Folder** and navigate to `mslearn-ai-agents/Labfiles/01-build-agent-portal-and-vscode/Python`, then click **Select Folder**.
+1. Once the repository opens, select **File > Open Folder** and navigate to `mslearn-ai-agents-dotnet/Labfiles/01-build-agent-portal-and-vscode/dotnet`, then click **Select Folder**.
 
 1. In the Explorer pane, open the `agent_with_functions.py` file. You'll see it's currently empty.
 
 1. Add the following code to the file:
 
-    ```python
-    import os
-    from azure.ai.projects import AIProjectClient
-    from azure.identity import DefaultAzureCredential
-    import base64
-    from pathlib import Path
-    from dotenv import load_dotenv
+    ```csharp
+    using Azure.AI.Projects;
+    using Azure.Identity;
+    using Microsoft.Extensions.Configuration;
+    using Azure.AI.Extensions.OpenAI;
+    using OpenAI.Responses;
     
     
-    def save_image(image_data, filename):
-        """Save base64 image data to a file."""
-        output_dir = Path("agent_outputs")
-        output_dir.mkdir(exist_ok=True)
-        
-        filepath = output_dir / filename
-        
-        # Decode and save the image
-        image_bytes = base64.b64decode(image_data)
-        with open(filepath, 'wb') as f:
-            f.write(image_bytes)
-        
-        return str(filepath)
+    // Load configuration from appsettings.json
+    var configuration = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .Build();
+    
+    // Load values from appsettings.json into environment variables
+    foreach (var setting in configuration.AsEnumerable())
+    {
+        if (!string.IsNullOrEmpty(setting.Value))
+        {
+            Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+        }
+    }
+    
+    #pragma warning disable OPENAI001
+    
+    var projectEndpoint = Environment.GetEnvironmentVariable("PROJECT_ENDPOINT");
+    var agentName = Environment.GetEnvironmentVariable("AGENT_NAME") ?? "it-support-agent";
+    var agentVersion = Environment.GetEnvironmentVariable("AGENT_VERSION") ?? "1";
+    
+    if (string.IsNullOrEmpty(projectEndpoint))
+    {
+        Console.WriteLine("Error: PROJECT_ENDPOINT environment variable not set");
+        Console.WriteLine("Please set it in your appsettings.json or .env file");
+        return;
+    }
     
     
-    def main():
-        # Initialize the project client
-        load_dotenv()
-        project_endpoint = os.environ.get("PROJECT_ENDPOINT")
-        agent_name = os.environ.get("AGENT_NAME", "it-support-agent")
-        
-        if not project_endpoint:
-            print("Error: PROJECT_ENDPOINT environment variable not set")
-            print("Please set it in your .env file or environment")
-            return
-        
-        print("Connecting to Microsoft Foundry project...")
-        credential = DefaultAzureCredential()
-        project_client = AIProjectClient(
-            credential=credential,
-            endpoint=project_endpoint
-        )
-        
-        # Get the OpenAI client for Responses API
-        openai_client = project_client.get_openai_client()
-        
-        # Get the agent created in the portal
-        print(f"Loading agent: {agent_name}")
-        agent = project_client.agents.get(agent_name=agent_name)
-        print(f"Connected to agent: {agent.name} (id: {agent.id})")
-        
-        # Create a conversation
-        conversation = openai_client.conversations.create(items=[])
-        print(f"Conversation created (id: {conversation.id})")
-        
-        # Chat loop
-        print("\n" + "="*60)
-        print("IT Support Agent Ready!")
-        print("Ask questions, request data analysis, or get help.")
-        print("Type 'exit' to quit.")
-        print("="*60 + "\n")
-        
-        while True:
-            user_input = input("You: ").strip()
-            
-            if user_input.lower() in ['exit', 'quit', 'bye']:
-                print("Goodbye!")
-                break
-            
-            if not user_input:
-                continue
-            
-            # Add user message to conversation
-            openai_client.conversations.items.create(
-                conversation_id=conversation.id,
-                items=[{"type": "message", "role": "user", "content": user_input}]
-            )
-            
-            # Get response from agent
-            print("\n[Agent is thinking...]")
-            response = openai_client.responses.create(
-                conversation=conversation.id,
-                extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
-                input=""
-            )
-            
-            # Display response
-            if hasattr(response, 'output_text') and response.output_text:
-                print(f"\nAgent: {response.output_text}\n")
-            elif hasattr(response, 'output') and response.output:
-                # Extract text from output items
-                image_count = 0
-                for item in response.output:
-                    if hasattr(item, 'text') and item.text:
-                        print(f"\nAgent: {item.text}\n")
-                    elif hasattr(item, 'type'):
-                        # Handle other output types like images from code interpreter
-                        if item.type == 'image':
-                            image_count += 1
-                            filename = f"chart_{image_count}.png"
-                            
-                            # Download and save the image
-                            if hasattr(item, 'image') and hasattr(item.image, 'data'):
-                                filepath = save_image(item.image.data, filename)
-                                print(f"\n[Agent generated a chart - saved to: {filepath}]")
-                            else:
-                                print(f"\n[Agent generated an image]")
-                        elif item.type == 'file':
-                            print(f"\n[Agent created a file]")
+    // Connect to your project using the endpoint from your project page
+    AIProjectClient projectClient = new(endpoint: new Uri(projectEndpoint), tokenProvider: new DefaultAzureCredential());
     
+    //Create a new conversation to chat with the agent.
+    ProjectConversation conversation = projectClient.OpenAI.Conversations.CreateProjectConversation();
     
-    if __name__ == "__main__":
-        main()
+    // Get a response client for the specific agent and conversation
+    ProjectResponsesClient responseClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(
+        agentName,
+        conversation);
+    
+    OpenAI.Files.OpenAIFileClient fileClient = projectClient.OpenAI.GetOpenAIFileClient();
+    
+    Console.WriteLine("Chat started. Type 'exit' to quit.\n");
+    
+    while (true)
+    {
+        Console.Write("You: ");
+        string? userInput = Console.ReadLine();
+    
+        if (string.IsNullOrWhiteSpace(userInput))
+            continue;
+    
+        if (userInput.Trim().Equals("exit", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("Goodbye!");
+            break;
+        }
+    
+        try
+        {
+            ResponseResult response = responseClient.CreateResponse(userInput);
+    
+            // Try simple text output first
+            string? outputText = response.GetOutputText();
+            if (!string.IsNullOrWhiteSpace(outputText))
+            {
+                Console.WriteLine($"\nAgent: {outputText}\n");
+            }
+    
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\nError: {ex.Message}\n");
+        }
+    }
     ```
 
 ### Configure environment and run the application
 
-1. In the Explorer pane, you'll see `.env.example` and `requirements.txt` files already present in the folder.
+1. In the Explorer pane, you'll see `appsettings.json` file already present in the folder.
 
-1. Duplicate the `.env.example` file, and rename to `.env`.
-
-1. In the `.env` file, replace `your_project_endpoint_here` with your actual project endpoint:
+1. In the `appsettings.json` file, replace `your_project_endpoint_here` with your actual project endpoint:
 
     ```
     PROJECT_ENDPOINT=<your_project_endpoint>
@@ -363,20 +324,20 @@ Now let's create a Python application that interacts with your agent programmati
 
     **To get your project endpoint:** In VS Code, open the **Microsoft Foundry** extension, right-click on your active project, and select **Copy Endpoint**.
 
-1. Save the `.env` file (**Ctrl+S** or **File > Save**).
+1. Save the `appsettings.json` file (**Ctrl+S** or **File > Save**).
 
 1. Open a terminal in VS Code (**Terminal > New Terminal**).
 
 1. Install the required packages:
 
     ```bash
-    pip install -r requirements.txt
+    dotnet build
     ```
 
 1. Run the application:
 
     ```bash
-    python agent_with_functions.py
+    dotnet run
     ```
 
 ### Test the agent with code interpreter
@@ -394,26 +355,11 @@ When the agent starts, try these prompts to test different capabilities:
     ```
     Analyze the system performance data and identify any periods where CPU usage exceeded 80%
     ```
-
-3. Request a visualization:
-
-    ```
-    Create a line chart showing memory usage trends over time
-    ```
-
-4. Ask for statistical analysis:
+3. Ask for statistical analysis:
 
     ```
     What are the average, minimum, and maximum values for disk usage in the performance data?
     ```
-
-5. Combined analysis:
-
-    ```
-    Find any correlation between high CPU usage and memory usage in the performance data
-    ```
-
-Observe how the agent uses both file search (for policy questions) and code interpreter (for data analysis) to fulfill your requests. The code interpreter will analyze the CSV data, perform calculations, and can even generate visualizations. Type `exit` when done testing.
 
 ---
 

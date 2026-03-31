@@ -1,17 +1,9 @@
----
-lab:
-    title: 'Use a custom function in an AI agent'
-    description: 'Learn how to use functions to add custom capabilities to your agents.'
-    level: 300
-    duration: 50
-    islab: true
----
 
 # Use a custom function in an AI agent
 
 In this exercise you'll explore creating an agent that can use custom functions as a tool to complete tasks. The agent will act as an astronomy assistant that can provide information about astronomical events and calculate the cost of telescope rentals based on user inputs. You'll define the function tools and implement the logic to process function calls made by the agent.
 
-> **Tip**: The code used in this exercise is based on the for Microsoft Foundry SDK for Python. You can develop similar solutions using the SDKs for Microsoft .NET, JavaScript, and Java. Refer to [Microsoft Foundry SDK client libraries](https://learn.microsoft.com/azure/ai-foundry/how-to/develop/sdk-overview) for details.
+> **Tip**: The code used in this exercise is based on the for Microsoft Foundry SDK for .NET. You can develop similar solutions using the SDKs for Python, JavaScript, and Java. Refer to [Microsoft Foundry SDK client libraries](https://learn.microsoft.com/azure/ai-foundry/how-to/develop/sdk-overview) for details.
 
 This exercise should take approximately **50** minutes to complete.
 
@@ -23,7 +15,7 @@ Before starting this exercise, ensure you have:
 
 - [Visual Studio Code](https://code.visualstudio.com/) installed on your local machine
 - An active [Azure subscription](https://azure.microsoft.com/free/)
-- [Python 3.13](https://www.python.org/downloads/) or later installed
+- [.NET 8 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
 - [Git](https://git-scm.com/downloads) installed on your local machine
 
 ## Install the Microsoft Foundry VS Code extension
@@ -104,80 +96,78 @@ For this exercise, you'll use starter code that will help you connect to your Fo
 
 1. Navigate to the **Welcome** tab in VS Code (you can open it by selecting **Help > Welcome** from the menu bar).
 
-1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/MicrosoftLearning/mslearn-ai-agents.git`
+1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/sonusathyadas/mslearn-ai-agents-dotnet.git`
 
 1. Create a new folder and choose **Select as Repository Destination**, then open the cloned repository when prompted.
 
-1. In the Explorer view, navigate to the **Labfiles/02-agent-custom-tools/Python** folder to find the starter code for this exercise.
+1. In the Explorer view, navigate to the **Labfiles/02-agent-custom-tools/dotnet** folder to find the starter code for this exercise.
 
-1. Right-click on the **requirements.txt** file and select **Open in Integrated Terminal**.
-
-1. In the terminal, enter the following command to install the required Python packages in a virtual environment:
-
-    ```
-    python -m venv labenv
-    .\labenv\Scripts\Activate.ps1
-    pip install -r requirements.txt
-    ```
-
-1. Open the **.env** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
+1. Open the **appsettings.json** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
 
 Now you're ready to create an AI agent that uses MCP server tools to access external data sources and APIs.
 
 ## Create a function for the agent to use
 
-1. Open the **functions.py** file and review the existing code.
+1. Open the **Functions.cs** file and review the existing code.
 
     This file includes several functions that you can use as tools for your agent. The functions use sample files located inthe **data** folder to retrieve information about astronomical events and locations.
 
-1. Find the comment **Determine the next visible astronomical event for a given location** and add the following code:
+1. Find the comment **/// Returns the next visible astronomical event for a location.** and add the following code:
 
-    ```python
-   # Determine the next visible astronomical event for a given location
-   def next_visible_event(location: str) -> str:
-       """Returns the next visible astronomical event for a location."""
-       today = int(datetime.now().strftime("%m%d"))
-       loc = location.lower().replace(" ", "_")
+    ```csharp    
+    /// <summary>Returns the next visible astronomical event for a location.</summary>
+    public static string NextVisibleEvent(string location)
+    {
+        int today = int.Parse(DateTime.Now.ToString("MMdd"));
+        string loc = location.ToLower().Replace(" ", "_");
 
-       # Retrieve the next event visible from the location, starting with events later this year
-       for name, event_type, date, date_str, locs in EVENTS:
-           if loc in locs and date >= today:
-               return json.dumps({"event": name, "type": event_type, "date": date_str, "visible_from": sorted(locs)})
+        foreach (var (name, type, sortKey, dateStr, locs) in Events)
+        {
+            if (locs.Contains(loc) && sortKey >= today)
+            {
+                return JsonSerializer.Serialize(new
+                {
+                    @event = name,
+                    type,
+                    date = dateStr,
+                    visible_from = locs.OrderBy(l => l).ToList()
+                });
+            }
+        }
 
-       return json.dumps({"message": f"No upcoming events found for {location}."})
+        return JsonSerializer.Serialize(new { message = $"No upcoming events found for {location}." });
+    }
     ```
 
     This function checks the sample events data to find the next astronomical event that is visible from a specified location, and returns the event details as a JSON string. Next, let's create an agent that can use this function.
 
 ## Connect to the Foundry project
 
-1. Open the **agent.py** file.
+1. Open the **Program.cs** file.
 
    > **Tip**: As you add code, be sure to maintain the correct indentation. Use the comment indentation levels as a guide.
 
 1. Find the comment **Add references** and add the following code to import the classes you'll need to build an Azure AI agent that uses a function tool:
 
-    ```python
-   # Add references
-   from azure.ai.projects import AIProjectClient
-   from azure.ai.projects.models import FunctionTool
-   from azure.identity import DefaultAzureCredential
-   from azure.ai.projects.models import PromptAgentDefinition, FunctionTool
-   from openai.types.responses.response_input_param import FunctionCallOutput, ResponseInputParam
-   from functions import next_visible_event, calculate_observation_cost, generate_observation_report
+    ```csharp
+    # Add references
+    using Azure.AI.Projects;
+    using Azure.Identity;
+    using Microsoft.Extensions.Configuration;
+    using Azure.AI.Extensions.OpenAI;
+    using OpenAI.Responses;
+    using Azure.AI.Projects.Agents;
+    using System.Text.Json;
     ```
-
-    Notice that the functions you defined in the **functions.py** file are imported so they can be used as tools for the agent.
 
 1. Find the comment **Connect to the project client** and add the following code:
 
-    ```python
-    # Connect to the project client
-    with (
-        DefaultAzureCredential() as credential,
-        AIProjectClient(endpoint=project_endpoint, credential=credential) as project_client,
-        project_client.get_openai_client() as openai_client,
-    ):
+    ```csharp
+    // Connect to the project client
+    AIProjectClient projectClient = new(
+        endpoint: new Uri(projectEndpoint),
+        tokenProvider: new DefaultAzureCredential()
+    );
     ```
 
 ## Define the function tools
@@ -186,96 +176,76 @@ In this task, you'll define each of the function tools that the agent can use. T
 
 1. Find the comment **Define the event function tool** and add the following code:
 
-    ```python
-   # Define the event function tool
-   event_tool = FunctionTool(
-       name="next_visible_event",
-       description="Get the next visible event in a given location.",
-       parameters={
-           "type": "object",
-           "properties": {
-               "location": {
-                   "type": "string",
-                   "description": "continent to find the next visible event in (e.g. 'north_america', 'south_america', 'australia')",
-               },
-           },
-           "required": ["location"],
-           "additionalProperties": False,
-       },
-       strict=True,
-   )
+    ```csharp
+   // Define the event function tool
+    FunctionTool nextVisibleEventTool = ResponseTool.CreateFunctionTool(
+        functionName: "next_visible_event",
+        functionDescription: "Get the next visible event in a given location.",
+        functionParameters: BinaryData.FromObjectAsJson(new
+        {
+            type = "object",
+            properties = new
+            {
+                location = new
+                {
+                    type = "string",
+                    description = "Continent to find the next visible event in (e.g. 'north_america', 'south_america', 'australia')"
+                }
+            },
+            required = new[] { "location" },
+            additionalProperties = false
+        }),
+        strictModeEnabled: true
+    );
     ```
 
 1. Find the comment **Define the observation cost function tool** and add the following code:
 
-    ```python
-   # Define the observation cost function tool
-   cost_tool = FunctionTool(
-       name="calculate_observation_cost",
-       description="Calculate the cost of an observation based on the telescope tier, number of hours, and priority level.",
-       parameters={
-           "type": "object",
-           "properties": {
-               "telescope_tier": {
-                   "type": "string",
-                   "description": "the tier of the telescope (e.g. 'standard', 'advanced', 'premium')",
-               },
-               "hours": {
-                   "type": "number",
-                   "description": "the number of hours for the observation",
-               },
-               "priority": {
-                   "type": "string",
-                   "description": "the priority level of the observation (e.g. 'low', 'normal', 'high')",
-               },
-           },
-           "required": ["telescope_tier", "hours", "priority"],
-           "additionalProperties": False,
-       },
-       strict=True,
-   )
+    ```csharp
+    // Define the observation cost function tool
+    FunctionTool observationCostTool = ResponseTool.CreateFunctionTool(
+        functionName: "calculate_observation_cost",
+        functionDescription: "Calculate the cost of an observation based on the telescope tier, number of hours, and priority level.",
+        functionParameters: BinaryData.FromObjectAsJson(new
+        {
+            type = "object",
+            properties = new
+            {
+                telescope_tier = new { type = "string", description = "The tier of the telescope (e.g. 'standard', 'advanced', 'premium')" },
+                hours = new { type = "number", description = "The number of hours for the observation" },
+                priority = new { type = "string", description = "The priority level of the observation (e.g. 'low', 'normal', 'high')" }
+            },
+            required = new[] { "telescope_tier", "hours", "priority" },
+            additionalProperties = false
+        }),
+        strictModeEnabled: true
+    );
     ```
 
 1. Find the comment **Define the observation report generation function tool** and add the following code:
 
-    ```python
-   # Define the observation report generation function tool
-   report_tool = FunctionTool(
-       name="generate_observation_report",
-       description="Generate a report summarizing an astronomical observation",
-       parameters={
-           "type": "object",
-           "properties": {
-               "event_name": {
-                   "type": "string",
-                   "description": "the name of the astronomical event being observed",
-               },
-               "location": {
-                   "type": "string",
-                   "description": "the location of the observer",
-               },
-               "telescope_tier": {
-                   "type": "string",
-                   "description": "the tier of the telescope used for the observation (e.g. 'standard', 'advanced', 'premium')",
-               },
-               "hours": {
-                   "type": "number",
-                   "description": "the number of hours the telescope was used for the observation",
-               },
-               "priority": {
-                   "type": "string",
-                   "description": "the priority level of the observation (e.g. 'low', 'normal', 'high')",
-               },
-               "observer_name": {
-                   "type": "string",
-                   "description": "the name of the person who conducted the observation",
-               },                   
-           },
-           "required": ["event_name", "location", "telescope_tier", "hours", "priority", "observer_name"],
-           "additionalProperties": False,
-       },
-       strict=True,
-   )
+    ```csharp
+    // Define the observation report generation function tool
+    FunctionTool generateObservationReportTool = ResponseTool.CreateFunctionTool(
+        functionName: "generate_observation_report",
+        functionDescription: "Generate a report summarizing an astronomical observation.",
+        functionParameters: BinaryData.FromObjectAsJson(new
+        {
+            type = "object",
+            properties = new
+            {
+                event_name = new { type = "string", description = "The name of the astronomical event being observed" },
+                location = new { type = "string", description = "The location of the observer" },
+                telescope_tier = new { type = "string", description = "The tier of the telescope used (e.g. 'standard', 'advanced', 'premium')" },
+                hours = new { type = "number", description = "The number of hours the telescope was used" },
+                priority = new { type = "string", description = "The priority level of the observation (e.g. 'low', 'normal', 'high')" },
+                observer_name = new { type = "string", description = "The name of the person who conducted the observation" }
+            },
+            required = new[] { "event_name", "location", "telescope_tier", "hours", "priority", "observer_name" },
+            additionalProperties = false
+        }),
+        strictModeEnabled: true
+    );
     ```
 
 ## Create the agent that uses the function tools
@@ -284,19 +254,20 @@ Now that you've defined the function tools, you can create an agent that can use
 
 1. Find the comment **Create a new agent with the function tools** and add the following code:
 
-    ```python
-   # Create a new agent with the function tools
-   agent = project_client.agents.create_version(
-       agent_name="astronomy-agent",
-       definition=PromptAgentDefinition(
-           model=model_deployment,
-           instructions=
-               """You are an astronomy observations assistant that helps users find 
-               information about astronomical events and calculate telescope rental costs. 
-               Use the available tools to assist users with their inquiries.""",
-           tools=[event_tool, cost_tool, report_tool],
-       ),
-   )
+    ```csharp
+    // Create a new agent with the function tools
+    var agentDefinition = new PromptAgentDefinition(model: modelDeployment)
+    {
+        Instructions =
+            "You are an astronomy observations assistant that helps users find " +
+            "information about astronomical events and calculate telescope rental costs. " +
+            "Use the available tools to assist users with their inquiries.",
+        Tools = { nextVisibleEventTool, observationCostTool, generateObservationReportTool }
+    };
+    
+    AgentVersion agentVersion = projectClient.Agents.CreateAgentVersion(
+        agentName: agentName,
+        options: new(agentDefinition));
     ```
 
 ## Send a message to the agent and process the response
@@ -305,99 +276,50 @@ Now that you've created the agent with the function tools, you can send messages
 
 1. Find the comment **Create a thread for the chat session** and add the following code:
 
-    ```python
-   # Create a thread for the chat session
-   conversation = openai_client.conversations.create()
+    ```csharp
+   //Create a thread for the chat session
+    ProjectConversation conversation = projectClient.OpenAI.Conversations.CreateProjectConversation();
     ```
 
     This code creates the chat session with the agent.
 
-1. Find the comment **Create an input list to hold function call outputs to send back to the model** and add the following code:
+1. Find the comment **Get the response client for the agent and conversation** and add the following code:
 
-    ```python
-   # Create a list to hold function call outputs that will be sent back as input to the agent
-   input_list: ResponseInputParam = []
+    ```csharp
+    // Get the response client for the agent and conversation
+    ProjectResponsesClient responseClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(
+    agentVersion.Name, conversation);
    ```
 
-1. Find the comment **Send a prompt to the agent** and add the following code:
+1. Find the comment **Send the user input and any function tool outputs back to the agent and get the response** and add the following code:
 
-    ```python
-   # Send a prompt to the agent
-   openai_client.conversations.items.create(
-       conversation_id=conversation.id,
-       items=[{"type": "message", "role": "user", "content": user_input}],
-   )
+    ```csharp
+    # Send the user input and any function tool outputs back to the agent and get the response
+    response = responseClient.CreateResponse(
+        model: modelDeployment,
+        inputItems: inputItems);
+    inputItems.Clear();
+    functionCalled = false;
+    foreach (ResponseItem responseItem in response.OutputItems)
+    {
+        inputItems.Add(responseItem);
+        if (responseItem is FunctionCallResponseItem functionToolCall)
+        {
+            Console.WriteLine($"Calling {functionToolCall.FunctionName}...");
+            inputItems.Add(AstronomyFunctions.GetResolvedToolOutput(functionToolCall));
+            functionCalled = true;
+        }
+    }
     ```
-
-1. Find the comment **Retrieve the agent's response, which may include function calls** and add the following code:
-
-    ```python
-   # Retrieve the agent's response, which may include function calls
-   response = openai_client.responses.create(
-       conversation=conversation.id,
-       extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
-       input=input_list,
-   )
-
-   # Check the run status for failures
-   if response.status == "failed":
-       print(f"Response failed: {response.error}")
-    ```
-
-    In this code, you send a user prompt to the agent and retrieve the response. You also check if the response indicates a failure and print the error if so.
-
-## Process function calls and display the agent's response
-
-1. Find the comment **Process function calls** and add the following code to handle any function calls made by the agent:
-
-    ```python
-   # Process function calls
-   for item in response.output:
-       if item.type == "function_call":
-           # Retrieve the matching function tool
-           function_name = item.name
-           result = None
-           if item.name == "next_visible_event":
-               result = next_visible_event(**json.loads(item.arguments))
-           elif item.name == "calculate_observation_cost":
-               result = calculate_observation_cost(**json.loads(item.arguments))
-           elif item.name == "generate_observation_report":
-               result = generate_observation_report(**json.loads(item.arguments))
-                
-           # Append the output text
-           input_list.append(
-               FunctionCallOutput(
-                   type="function_call_output",
-                   call_id=item.call_id,
-                   output=result,
-               )
-           )
-    ```
-
-    This code iterates through the items in the agent's response to check for any function calls. If a function call is found, it retrieves the corresponding function tool, executes the function with the provided arguments, and appends the result to the input list that will be sent back to the agent.
-
-1. Find the comment **Send function call outputs back to the model and retrieve a response** and add the following code:
-
-    ```python
-   # Send function call outputs back to the model and retrieve a response
-   if input_list:
-       response = openai_client.responses.create(
-           input=input_list,
-           previous_response_id=response.id,
-           extra_body={"agent": {"name": agent.name, "type": "agent_reference"}},
-       )
-   # Display the agent's response
-   print(f"AGENT: {response.output_text}")
-    ```
-
-    This code checks if there are any function call outputs in the input list, and if so, it sends them back to the agent as input to retrieve an updated response. Finally, it prints the agent's response.
 
 1. Find the comment  **Delete the conversation when done** and add the following code:
 
-    ```python
-   # Delete the agent when done
-    project_client.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
-    print("Deleted agent.")
+    ```csharp
+    // Delete the conversation when done
+    projectClient.Agents.DeleteAgentVersion(
+        agentName: agentName,
+        agentVersion: agentVersion.Version);
+    Console.WriteLine("Agent deleted.");
     ```
 
 1. Review the complete code you've added to the file. It should now include sections that:
@@ -417,7 +339,7 @@ Now that you've created the agent with the function tools, you can send messages
 1. In the integrated terminal, enter the following command to run the application:
 
     ```
-   python agent.py
+   dotnet run
     ```
 
 1. When prompted, enter a prompt such as:
@@ -460,11 +382,7 @@ Now that you've created the agent with the function tools, you can send messages
     A formal report has been generated for Bellows College.
     ```
 
-    In the file explorer, you can see that a new file named `report-<event-type>.txt` has been created, which contains the generated report. You can open this file to view the contents of the report.
-
 1. Enter `quit` to exit the application.
-
-    You can also use `deactivate` to exit the Python virtual environment in the terminal.
 
 ## Summary
 
