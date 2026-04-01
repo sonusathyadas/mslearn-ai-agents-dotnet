@@ -1,11 +1,3 @@
----
-lab:
-    title: 'Build a workflow in Microsoft Foundry'
-    description: 'Use the Microsoft Foundry portal to create workflows for AI agents.'
-    level: 300
-    duration: 45
-    islab: true
----
 
 # Build a workflow in Microsoft Foundry
 
@@ -68,7 +60,7 @@ In this section, you'll create a workflow that helps triage and respond to custo
 
 1. On the Foundry portal home page, select **Build** from the toolbar menu.
 
-1. On the left-hand menu, select **Workflows**.
+1. On the left-hand menu, select **Agents** and then select **Workflows** tab.
 
 1. In the upper right corner, select **Create** > **Blank workflow** to create a new blank workflow.
 
@@ -180,7 +172,7 @@ In this section, you'll create a workflow that helps triage and respond to custo
     - Billing ONLY applies when money was charged, refunded, or paid incorrectly
     ```
 
-1. Select **Action settings** to configure the input and output of the agent.
+1. Select **Node settings** to configure the input and output of the agent.
 
 1. Set the **Input message** field to the  `Local.CurrentTicket` variable.
 
@@ -210,7 +202,7 @@ In this section, you'll create a workflow that helps triage and respond to custo
 
 1. In the visualizer, under the **Else** branch of the **If/Else condition** node, select the **+** (plus) icon to add a new node that recommends additional information for low-confidence tickets.
 
-1. In the workflow actions menu, under **Basics**, select **Send message** to add a send message activity.
+1. In the workflow actions menu, under **Basics**, select **Deliver message** to add a send message activity.
 
 1. In the **Send message** node editor, set the **Message to send** field to the following response:
 
@@ -234,7 +226,7 @@ In this section, you'll add conditional logic to route the ticket based on its c
 
 1. Select the **+** (plus) icon under the **If** branch of the **If/Else** node to add a new node that drafts a response for non-billing tickets.
 
-1. In the workflow actions menu, under **Basics**, select **Send message** to add a send message activity.
+1. In the workflow actions menu, under **Basics**, select **Deliver message** to add a send message activity.
 
 1. In the **Send message** node editor, set the **Message to send** to the following response:
 
@@ -282,7 +274,7 @@ In this section, you'll add conditional logic to route the ticket based on its c
     Do not include internal reasoning or analysis.
     ```
 
-1. Select **Action settings** to configure the input and output of the agent.
+1. Select **Node settings** to configure the input and output of the agent.
 
 1. Set the **Input message** field to the `Local.TriageOutputText` variable.
 
@@ -323,7 +315,7 @@ Before starting this exercise, ensure you have:
 
 - [Visual Studio Code](https://code.visualstudio.com/) installed on your local machine
 - An active [Azure subscription](https://azure.microsoft.com/free/)
-- [Python 3.13](https://www.python.org/downloads/) or later installed
+- [.NET 10 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
 - [Git](https://git-scm.com/downloads) installed on your local machine
 
 ### Install the Microsoft Foundry VS Code extension
@@ -404,110 +396,76 @@ For this exercise, you'll use starter code that will help you connect to your Fo
 
 1. Navigate to the **Welcome** tab in VS Code (you can open it by selecting **Help > Welcome** from the menu bar).
 
-1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/MicrosoftLearning/mslearn-ai-agents.git`
+1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/sonusathyadas/mslearn-ai-agents-dotnet.git`
 
 1. Create a new folder and choose **Select as Repository Destination**, then open the cloned repository when prompted.
 
-1. In the Explorer view, navigate to the **Labfiles/08-build-workflow-ms-foundry/Python** folder to find the starter code for this exercise.
+1. In the Explorer view, navigate to the **Labfiles/08-build-workflow-ms-foundry/dotnet/FoundryWorkflow** folder to find the starter code for this exercise.
 
-1. Right-click on the **requirements.txt** file and select **Open in Integrated Terminal**.
+1. Right-click on the **appsettings.json** file and select **Open in Integrated Terminal**.
 
-1. In the terminal, enter the following command to install the required Python packages in a virtual environment:
+1. In the terminal, enter the following command to install the required nuget packages:
 
     ```
-    python -m venv labenv
-    .\labenv\Scripts\Activate.ps1
-    pip install -r requirements.txt
+    dotnet restore
     ```
 
-1. Open the **.env** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
+1. Open the **appsettings.json** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the WORKFLOW_VERSION variable is set to the latest workflow version. Use **Ctrl+S** to save the file after making these changes.
 
 ### Connect to the workflow and run it
 
 Now you're ready to create a project that invokes a workflow. Let's get started!
 
-1. Open the **workflow.py** file in the code editor.
+1. Open the **Program.cs** file in the code editor.
 
-1. Review the code in the file, noting that it contains strings for each agent name and instructions.
+1. Find the comment **Add references** and add the following code to import the namespaces you'll need:
 
-1. Find the comment **Add references** and add the following code to import the classes you'll need:
-
-    ```python
-   # Add references
-   from azure.identity import DefaultAzureCredential
-   from azure.ai.projects import AIProjectClient
-   from azure.ai.projects.models import ItemType
+    ```csharp
+    // Add references
+    using Azure.AI.Extensions.OpenAI;
+    using Azure.AI.Projects;
+    using Azure.Identity;
+    using Microsoft.Extensions.Configuration;
+    using OpenAI.Responses;
     ```
 
 1. Note that code to load the project endpoint and model name from your environment variables has been provided.
 
-1. Find the comment **Connect to the agents client**, and add the following code to create an AgentsClient connected to your project:
+1. Find the comment **Connect to the agents client**, and add the following code to create an projectClient connected to your project:
 
-    ```python
-   # Connect to the AI Project client
-   with (
-       DefaultAzureCredential() as credential,
-       AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
-       project_client.get_openai_client() as openai_client,
-   ):
+    ```csharp
+    // Connect to the AI Project client
+    AIProjectClient projectClient = new(
+        endpoint: new Uri(projectEndpoint),
+        tokenProvider: new DefaultAzureCredential()
+    );
     ```
-
-    Now you'll add code that uses the AgentsClient to create multiple agents, each with a specific role to play in processing a support ticket.
-
-    > **Tip**: When adding subsequent code, be sure to maintain the right level of indentation.
-
-1. Find the comment **Specify the workflow** and the following code:
-
-    ```python
-   # Specify the workflow
-    workflow = {
-        "name": "ContosoPay-Customer-Support-Triage",
-        "version": "1",
-    }
-    ```
-
-    Be sure to use the name and version of the workflow you created in the Foundry portal.
 
 1. Find the comment **Create a conversation and run the workflow**, and add the following code to create a conversation and invoke your workflow:
 
-    ```python
-    # Create a conversation and run the workflow
-    conversation = openai_client.conversations.create()
-    print(f"Created conversation (id: {conversation.id})")
-
-    stream = openai_client.responses.create(
-        conversation=conversation.id,
-        extra_body={"agent": {"name": workflow["name"], "type": "agent_reference"}},
-        input="Start",
-        stream=True,
-        metadata={"x-ms-debug-mode-enabled": "1"},
-    )
+    ```csharp
+    // Create a conversation
+    ProjectConversation conversation = projectClient.OpenAI.Conversations.CreateProjectConversation();
+    Console.WriteLine($"Created conversation (id: {conversation.Id})");
     ```
 
-    This code will stream the output of the workflow execution to the console, allowing you to see the flow of messages as the workflow processes each ticket.
+1. Find the comment **Get a responses client scoped to the workflow agent**, and add the following code to create a ResponsesClient:
 
-1. Find the comment **Process events from the workflow run**, and add the following code to process the streamed output and print messages to the console:
-
-    ```python
-    # Process events from the workflow run
-    for event in stream:
-        if (event.type == "response.completed"):
-            print("\nResponse completed:")
-            for message in event.response.output:
-                if message.content:
-                    for content_item in message.content:
-                        if content_item.type == 'output_text':
-                            print(content_item.text)
-        if (event.type == "response.output_item.done") and event.item.type == ItemType.WORKFLOW_ACTION:
-            print(f"item action ID '{event.item.action_id}' is '{event.item.status}' (previous action ID: '{event.item.previous_action_id}')")
+    ```csharp
+    // Get a responses client scoped to the workflow agent
+    AgentReference agentReference = new AgentReference(name: workflowName, version: workflowVersion);
+    ProjectResponsesClient responseClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(
+        agentReference, 
+        conversation.Id
+    );
     ```
 
-1. Find the comment **Clean up resources**, and enter the following code to delete the conversation when it is longer required:
+1. Find the comment **Create a response from the workflow agent**, and enter the following code to make a request and print the response:
 
-    ```python
-   # Clean up resources
-   openai_client.conversations.delete(conversation_id=conversation.id)
-   print("\nConversation deleted")
+    ```csharp
+    // Create a response from the workflow agent
+    ResponseResult response = responseClient.CreateResponse("Start processing all tickets");
+    Console.WriteLine(response.GetOutputText());
     ```
 
 1. Use the **CTRL+S** command to save your changes to the code file.
@@ -516,10 +474,10 @@ Now you're ready to create a project that invokes a workflow. Let's get started!
 
 Now you're ready to run your code and watch your AI agents collaborate.
 
-1 In the integrated terminal, run the following command:
+1. In the integrated terminal, run the following command:
 
-    ```
-   python workflow.py
+    ```bash
+    dotnet run
     ```
 
 1. Wait a moment for the workflow to process the tickets. As the workflow runs, you should see output in the console indicating the progress of the workflow, including messages generated by the agents and status updates for each action in the workflow.
@@ -542,8 +500,6 @@ Now you're ready to run your code and watch your AI agents collaborate.
     ```
 
     In the output, you can see the how the workflow completes each step, including the classification of each ticket and the recommended response or escalation. Great work!
-
-1. When you're finished, enter `deactivate` in the terminal to exit the Python virtual environment.
 
 ## Summary
 
