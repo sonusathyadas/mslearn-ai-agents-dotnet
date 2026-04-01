@@ -1,11 +1,3 @@
----
-lab:
-    title: 'Deploy agents to Microsoft Teams and Copilot'
-    description: 'Publish AI agents to Microsoft Teams and Microsoft 365 Copilot for enterprise access'
-    level: 300
-    duration: 40
-    islab: true
----
 
 # Deploy agents to Microsoft Teams and Copilot
 

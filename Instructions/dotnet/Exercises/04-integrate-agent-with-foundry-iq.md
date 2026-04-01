@@ -1,17 +1,8 @@
----
-lab:
-    title: 'Integrate an AI agent with Foundry IQ'
-    description: 'Use Azure AI Agent Service to develop an agent that uses Foundry IQ to search knowledge bases.'
-    level: 300
-    duration: 45
-    islab: true
----
-
 # Integrate an AI agent with Foundry IQ
 
 In this exercise, you'll use Microsoft Foundry portal to create an agent that integrates with Foundry IQ to search and retrieve information from knowledge bases. You'll create a search resource, configure a knowledge base with sample data, build an agent in the portal, and then connect to it from Visual Studio Code to interact programmatically.
 
-> **Tip**: The code used in this exercise is based on the Microsoft Foundry SDK for Python. You can develop similar solutions using the SDKs for Microsoft .NET, JavaScript, and Java. Refer to [Microsoft Foundry SDK client libraries](https://learn.microsoft.com/azure/ai-foundry/how-to/develop/sdk-overview) for details.
+> **Tip**: The code used in this exercise is based on the Microsoft Foundry SDK for .NET. You can develop similar solutions using the SDKs for Python, JavaScript, and Java. Refer to [Microsoft Foundry SDK client libraries](https://learn.microsoft.com/azure/ai-foundry/how-to/develop/sdk-overview) for details.
 
 This exercise should take approximately **45** minutes to complete.
 
@@ -23,9 +14,9 @@ Before starting this exercise, ensure you have:
 
 - An [Azure subscription](https://azure.microsoft.com/free/) with permissions to create AI resources
 - [Visual Studio Code](https://code.visualstudio.com/) installed on your local machine
-- [Python 3.13](https://www.python.org/downloads/) or later installed
+- [.NET 10 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
 - [Git](https://git-scm.com/downloads) installed on your local machine
-- Basic familiarity with the Microsoft Foundry portal and Python programming
+- Basic familiarity with the Microsoft Foundry portal and C# programming
 
 ## Create a Foundry project
 
@@ -81,7 +72,7 @@ Now you'll configure your agent that uses Foundry IQ to search the knowledge bas
 
 Now you'll upload sample product information documents to connect to with Foundry IQ.
 
-1. Download the sample product information files by opening a new browser tab and navigating to `https://github.com/MicrosoftLearning/mslearn-ai-agents/raw/main/Labfiles/04-integrate-agent-with-foundry-iq/data/contoso-products.zip`
+1. Download the sample product information files by opening a new browser tab and navigating to `https://github.com/sonusathyadas/mslearn-ai-agents-dotnet/blob/main/Labfiles/04-integrate-agent-with-foundry-iq/data/contoso-products.zip`
 1. Extract the files from the zip, which should be 3 PDFs detailing the products from Contoso.
 1. In the Azure Portal tab, in the top search bar, search fo **Storage accounts** and select **Storage accounts** from the services section.
 1. Create a storage account with the following settings:
@@ -136,171 +127,156 @@ Before connecting from code, test your agent in the portal playground.
 
 ## Connect to your agent from an app
 
-Now you'll create a Python application to interact with your agent programmatically. Starter files have been provided in the GitHub repository to help you get started quickly.
+Now you'll create a C# application to interact with your agent programmatically. Starter files have been provided in the GitHub repository to help you get started quickly.
 
 ### Prepare to develop an app in Visual Studio Code
 
 Now let's use Visual Studio Code to develop an app. The code files for your app have been provided in a GitHub repo.
 
-1. Start Visual Studio Code, and open the command palette (Shift+Ctrl+P). Then search for and run the **Git: Clone** command to clone the `https://github.com/MicrosoftLearning/mslearn-ai-agents` repo to a local folder (it doesn't matter which folder).
+1. Start Visual Studio Code, and open the command palette (Shift+Ctrl+P). Then search for and run the **Git: Clone** command to clone the `https://github.com/sonusathyadas/mslearn-ai-agents-dotnet.git` repo to a local folder (it doesn't matter which folder).
 1. When the repository has been cloned, open the folder in Visual Studio Code.
 
     > **Note**: If Visual Studio Code shows you a pop-up message prompting you to trust the code you are opening, click **Yes, I trust the authors** option to continue.
 
-1. Wait while additional files are installed to support the Python code projects in the repo (if prompted).
+1. Wait while additional files are installed to support the C# code projects in the repo (if prompted).
 
     > **Note**: If you are prompted to install required assets to build and debug, select **Not Now**.
 
-1. In the **Explorer** pane, expand the **Labfiles/04-integrate-agent-with-foundry-iq/Python** folder.
+1. In the **Explorer** pane, expand the **Labfiles/04-integrate-agent-with-foundry-iq/dotnet/FoundryIQ** folder.
 
     The provided files include application code, configuration settings, and the agent client starter code.
 
 ### Configure the application settings
 
-1. In Visual Studio Code, in the **Labfiles/04-integrate-agent-with-foundry-iq/Python** folder, open the **.env** configuration file.
+1. In Visual Studio Code, in the **Labfiles/04-integrate-agent-with-foundry-iq/FoundryIQ** folder, open the **appsettings.json** configuration file.
 1. In the code file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project **Home** page in the Foundry portal) and ensure that the AGENT_NAME variable is set to your agent name (which should be *product-expert-agent*).
 1. After you've replaced the placeholder, save the file.
 
 ### Complete the agent client code
 
-> **Tip**: As you add code, be sure to maintain the correct indentation. Use the comment indentation levels as a guide.
-
-1. In Visual Studio Code, in the **Labfiles/04-integrate-agent-with-foundry-iq/Python** folder, open the **agent_client.py** code file.
+1. In Visual Studio Code, in the **Labfiles/04-integrate-agent-with-foundry-iq/FoundryIQ** folder, open the **Program.cs** code file.
 1. Review the starter code that has been provided, including:
     - Import statements and configuration loading
-    - The `send_message_to_agent()` function structure
-    - The `display_conversation_history()` function
+    - The `SendMessageToAgentAsync()` function structure
+    - The `DisplayConversationHistory()` function
     - The main program loop
 
-1. Find the first **TODO** comment and add the following code to connect to the project, get the OpenAI client, retrieve the agent, and create a new conversation:
+1. Find the **Connect to the project and agent** comment and add the following code to connect to the project:
 
-    > **Tip**: Be careful to maintain the correct indentation level.
-
-    ```python
-    # Connect to the project and agent
-    credential = DefaultAzureCredential(
-        exclude_environment_credential=True,
-        exclude_managed_identity_credential=True
-    )
-    project_client = AIProjectClient(
-        credential=credential,
-        endpoint=project_endpoint
-    )
-
-    # Get the OpenAI client
-    openai_client = project_client.get_openai_client()
-
-    # Get the agent
-    agent = project_client.agents.get(agent_name=agent_name)
-    print(f"Connected to agent: {agent.name} (id: {agent.id})\n")
-
-    # Create a new conversation
-    conversation = openai_client.conversations.create(items=[])
-    print(f"Created conversation (id: {conversation.id})\n")
+    ```csharp
+    // Connect to the project and agent
+    AIProjectClient projectClient = new(endpoint: new Uri(projectEndpoint), tokenProvider: new DefaultAzureCredential());
+    ```
+1. Find the **Create a new conversation to chat with the agent.** comment and add the following code
+    ```csharp
+    //Create a new conversation to chat with the agent.
+    ProjectConversation conversation = projectClient.OpenAI.Conversations.CreateProjectConversation();
+    ```
+1. Find the **Get a response client for the specific agent and conversation** comment and add the following code
+    ```csharp
+    // Get a response client for the specific agent and conversation
+    ProjectResponsesClient responseClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(
+        agentName,
+        conversation
+    );
+    ```
+1. Find the **Conversation history for context (client-side tracking)** comment and add the following code
+    ```csharp
+    // Conversation history for context (client-side tracking)
+    var conversationHistory = new List<(string Role, string Content)>();
     ```
 
-1. Find the second **TODO** comment inside the `send_message_to_agent()` function and add the following code to send messages and handle responses, including MCP approval requests:
+1. Find the **// TODO : Send request to agent and get response** comment inside the `SendMessageToAgentAsync()` function and add the following code to send messages and handle responses, including MCP approval requests:
 
-    ```python
-    # Add user message to the conversation
-    openai_client.conversations.items.create(
-        conversation_id=conversation.id,
-        items=[{"type": "message", "role": "user", "content": user_message}],
-    )
+    ```csharp
+    // TODO : Send request to agent and get response
+    Console.Write("Agent: ");
     
-    # Store in conversation history (client-side)
-    conversation_history.append({
-        "role": "user",
-        "content": user_message
-    })
+    // Build input items
+    var inputItems = new List<ResponseItem>
+    {
+        ResponseItem.CreateUserMessageItem(userMessage)
+    };
     
-    # Create a response using the agent
-    response = openai_client.responses.create(
-        conversation=conversation.id,
-        extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
-        input=""
-    )
-
-    # Check if the response output contains an MCP approval request
-    approval_request = None
-    if hasattr(response, 'output') and response.output:
-        for item in response.output:
-            if hasattr(item, 'type') and item.type == 'mcp_approval_request':
-                approval_request = item
-                break
+    // Store user message in history
+    conversationHistory.Add(("user", userMessage));
     
-    # Handle approval request if present
-    if approval_request:
-        print(f"[Approval required for: {approval_request.name}]\n")
-        print(f"Server: {approval_request.server_label}")
-        
-        # Parse and display the arguments (optional, for transparency)
-        import json
-        try:
-            args = json.loads(approval_request.arguments)
-            print(f"Arguments: {json.dumps(args, indent=2)}\n")
-        except:
-            print(f"Arguments: {approval_request.arguments}\n")
-        
-        # Prompt user for approval
-        approval_input = input("Approve this action? (yes/no): ").strip().lower()
-        
-        if approval_input in ['yes', 'y']:
-            print("Approving action...\n")
-            
-            # Create approval response item
-            approval_response = {
-                "type": "mcp_approval_response",
-                "approval_request_id": approval_request.id,
-                "approve": True
-            }
-        else:
-            print("Action denied.\n")
-            
-            # Create denial response item
-            approval_response = {
-                "type": "mcp_approval_response",
-                "approval_request_id": approval_request.id,
-                "approve": False
-            }
-        
-        # Add the approval response to the conversation
-        openai_client.conversations.items.create(
-            conversation_id=conversation.id,
-            items=[approval_response]
-        )
-        
-        # Get the actual response after approval/denial
-        response = openai_client.responses.create(
-            conversation=conversation.id,
-            extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
-            input=""
-        )
+    // Create a response using the agent
+    ResponseResult response = await responseClient.CreateResponseAsync(inputItems);
+    
+    // Check for MCP approval request in output
+    ResponseItem? approvalRequest = response.OutputItems
+        .FirstOrDefault(item => item is McpToolCallApprovalRequestItem);
+    
+    if (approvalRequest != null)
+    {
+        // Use reflection or cast to get properties if strongly typed class exists
+        McpToolCallApprovalRequestItem? approvalItem = approvalRequest as McpToolCallApprovalRequestItem;
+        Console.WriteLine($"\n[Approval required for: {approvalItem?.ToolName}]");
+        Console.WriteLine($"Server: {approvalItem?.ServerLabel}");
+    
+        try
+        {
+            var args = JsonSerializer.Deserialize<JsonElement>(approvalItem?.ToolArguments.ToString());
+            Console.WriteLine($"Arguments: {JsonSerializer.Serialize(args, new JsonSerializerOptions { WriteIndented = true })}\n");
+        }
+        catch
+        {
+            Console.WriteLine($"Arguments: {approvalItem?.ToolArguments}\n");
+        }
+    
+        Console.Write("Approve this action? (yes/no): ");
+        var approvalInput = Console.ReadLine()?.Trim().ToLower();
+        bool approved = approvalInput == "yes" || approvalInput == "y";
+    
+        if (approved)
+            Console.WriteLine("Approving action...\n");
+        else
+            Console.WriteLine("Action denied.\n");
+    
+        // Add approval response and get follow-up
+        inputItems.Add(ResponseItem.CreateMcpApprovalResponseItem(approvalRequestId: approvalItem?.Id, approved: true));
+        response = responseClient.CreateResponse(inputItems);
+    }
+    
+    // Extract response text
+    if (response?.GetOutputText() is string responseText && !string.IsNullOrEmpty(responseText))
+    {
+        Console.WriteLine($"{responseText}\n");
+    
+        // Store assistant message in history
+        conversationHistory.Add(("assistant", responseText));
+    
+        return responseText;
+    }
+    else
+    {
+        Console.WriteLine("No response received.\n");
+        return null;
+    }
     
     ```
 
 1. After you've added the code, save the file.
 
 1. Review the code now uses the conversations API to manage interactions with your agent, where:
-    - A conversation is created and tracked by its ID
-    - User messages are added to the conversation using `conversations.items.create()`
-    - Responses are generated using `responses.create()` with an agent reference
-    - **MCP approval handling**: When the agent needs to access Foundry IQ, it requests approval by returning an `mcp_approval_request` in the response output
+    - A conversation is created 
+    - User messages are added to the conversation
+    - Responses are generated using `responseClient.CreateResponseAsync(inputItems)`
+    - **MCP approval handling**: When the agent needs to access Foundry IQ, it requests approval by returning an `McpToolCallApprovalRequestItem` in the response output
     - The code prompts you to approve or deny the action before proceeding
-    - After approval/denial, an `mcp_approval_response` is added to the conversation and a new response is generated
+    - After approval/denial, an `McpApprovalResponseItem` is added to the conversation and a new response is generated
     - The agent retrieves information from Foundry IQ based on your approval decision
 
 ## Test the Integration
 
 Now you'll run your application and test the agent's ability to retrieve information from the knowledge base.
 
-1. In Visual Studio Code, open an integrated terminal for the **Labfiles/04-integrate-agent-with-foundry-iq/Python** folder by right-clicking the folder and selecting **Open in Integrated Terminal**.
-1. First, create a virtual environment and install dependencies.
+1. In Visual Studio Code, open an integrated terminal for the **Labfiles/04-integrate-agent-with-foundry-iq/dotnet/FoundryIQ** folder by right-clicking the folder and selecting **Open in Integrated Terminal**.
+1. First, build the project for checking errors
 
     ```
-   python -m venv labenv
-   ./labenv/Scripts/activate
-   pip install -r requirements.txt
+    dotnet build
     ```
 
 1. In the terminal pane, enter the following command to sign into Azure.
@@ -316,7 +292,7 @@ Now you'll run your application and test the agent's ability to retrieve informa
 1. In the terminal pane, run your application:
 
     ```
-   python agent_client.py
+    dotnet run
     ```
 
 1. When the application starts, test the agent with the following queries:
@@ -383,7 +359,7 @@ In this exercise, you:
 - Created a Foundry project and agent with the new Foundry UI
 - Built a knowledge base with product information documents
 - Configured an agent in the portal with Foundry IQ enabled
-- Connected to your agent from Visual Studio Code using the Python SDK
+- Connected to your agent from Visual Studio Code using the .NET SDK
 - Implemented a client application with MCP approval handling, conversation history, and error handling
 - Tested the agent's ability to retrieve and synthesize information from the knowledge base with user-controlled approval for external tool access
 
