@@ -111,19 +111,19 @@ Now you'll add company documents so the agent can answer questions with real inf
     **IT Security Policy:**
 
     ```
-    https://raw.githubusercontent.com/MicrosoftLearning/mslearn-ai-agents/main/Labfiles/05a-m365-teams-integration/Python/sample_documents/it_security_policy.txt
+    https://github.com/sonusathyadas/mslearn-ai-agents-dotnet/blob/main/Labfiles/05a-m365-teams-integration/dotnet/sample_documents/it_security_policy.txt
     ```
 
     **Remote Work Policy:**
 
     ```
-    https://raw.githubusercontent.com/MicrosoftLearning/mslearn-ai-agents/main/Labfiles/05a-m365-teams-integration/Python/sample_documents/remote_work_policy.txt
+    https://github.com/sonusathyadas/mslearn-ai-agents-dotnet/blob/main/Labfiles/05a-m365-teams-integration/dotnet/sample_documents/remote_work_policy.txt
 
 1. Back to your agent's configuration, scroll to the **Tools** section
 
-1. Select **Add** and then **Browse all tools** and **Add tool**.
-
-1. A pop up to attach files will show up, attach the files previously downloaded.
+1. Select **Add** and then select **Browse all tools** 
+1. A dialog box appears with three tabs, Select the **Catalog** tab and choose **File Search** and click on **Create**.
+1. A pop up to attach files will show up, attach the files previously downloaded. Leave all other fields as default.
 
 1. Once they complete, select **Attach**.
 
