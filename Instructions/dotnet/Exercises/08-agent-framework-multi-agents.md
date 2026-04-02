@@ -1,12 +1,3 @@
----
-lab:
-    title: 'Develop a multi-agent solution with Microsoft Agent Framework'
-    description: 'Learn to configure multiple agents to collaborate using the Microsoft Agent Framework SDK'
-    level: 300
-    duration: 30
-    islab: true
----
-
 # Develop a multi-agent solution
 
 In this exercise, you'll practice using the sequential orchestration pattern in the Microsoft Agent Framework SDK. You'll create a simple pipeline of three agents that work together to process customer feedback and suggest next steps. You'll create the following agents:
@@ -27,7 +18,7 @@ Before starting this exercise, ensure you have:
 
 - [Visual Studio Code](https://code.visualstudio.com/) installed on your local machine
 - An active [Azure subscription](https://azure.microsoft.com/free/)
-- [Python 3.13](https://www.python.org/downloads/) or later installed
+- [.NET 10 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
 - [Git](https://git-scm.com/downloads) installed on your local machine
 
 ## Install the Microsoft Foundry VS Code extension
@@ -108,29 +99,27 @@ For this exercise, you'll use starter code that will help you connect to your Fo
 
 1. Navigate to the **Welcome** tab in VS Code (you can open it by selecting **Help > Welcome** from the menu bar).
 
-1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/MicrosoftLearning/mslearn-ai-agents.git`
+1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/sonusathyadas/mslearn-ai-agents-dotnet.git`
 
 1. Create a new folder and choose **Select as Repository Destination**, then open the cloned repository when prompted.
 
-1. In the Explorer view, navigate to the **Labfiles/05-agent-orchestration/Python** folder to find the starter code for this exercise.
+1. In the Explorer view, navigate to the **Labfiles/05-agent-orchestration/dotnet/MultiAgentOrchestration** folder to find the starter code for this exercise.
 
-1. Right-click on the **requirements.txt** file and select **Open in Integrated Terminal**.
+1. Right-click on the **appsettings.json** file and select **Open in Integrated Terminal**.
 
 1. In the terminal, enter the following command to install the required Python packages in a virtual environment:
 
     ```
-    python -m venv labenv
-    .\labenv\Scripts\Activate.ps1
-    pip install -r requirements.txt
+    dotnet restore
     ```
 
-1. Open the **.env** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
+1. Open the **appsettings.json** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
 
 ## Create AI agents
 
 Now you're ready to create the agents for your multi-agent solution! Let's get started!
 
-1. Open the **agents.py** file in the code editor.
+1. Open the **Program.cs** file in the code editor.
 
 1. At the top of the file under the comment **Add references**, and add the following code to reference the namespaces in the libraries you'll need to implement your agent:
 

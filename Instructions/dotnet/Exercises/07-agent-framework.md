@@ -1,11 +1,3 @@
----
-lab:
-    title: 'Develop an Azure AI agent with the Microsoft Agent Framework SDK'
-    description: 'Learn how to use the Microsoft Agent Framework SDK to create and use an Azure AI chat agent.'
-    level: 300
-    duration: 30
-    islab: true
----
 
 # Develop an Azure AI chat agent with the Microsoft Agent Framework SDK
 
@@ -21,7 +13,7 @@ Before starting this exercise, ensure you have:
 
 - [Visual Studio Code](https://code.visualstudio.com/) installed on your local machine
 - An active [Azure subscription](https://azure.microsoft.com/free/)
-- [Python 3.13](https://www.python.org/downloads/) or later installed
+- [.NET 10 or later](https://dotnet.microsoft.com/en-us/download/dotnet) or later installed
 - [Git](https://git-scm.com/downloads) installed on your local machine
 
 ## Install the Microsoft Foundry VS Code extension
@@ -102,23 +94,21 @@ For this exercise, you'll use starter code that will help you connect to your Fo
 
 1. Navigate to the **Welcome** tab in VS Code (you can open it by selecting **Help > Welcome** from the menu bar).
 
-1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/MicrosoftLearning/mslearn-ai-agents.git`
+1. Select **Clone git repository** and enter the URL of the starter code repository: `https://github.com/sonusathyadas/mslearn-ai-agents-dotnet.git`
 
 1. Create a new folder and choose **Select as Repository Destination**, then open the cloned repository when prompted.
 
-1. In the Explorer view, navigate to the **Labfiles/07-agent-framework/Python** folder to find the starter code for this exercise.
+1. In the Explorer view, navigate to the **Labfiles/07-agent-framework/dotnet/AgentFrameworkDemo** folder to find the starter code for this exercise.
 
-1. Right-click on the **requirements.txt** file and select **Open in Integrated Terminal**.
+1. Right-click on the **appsettings.json** file and select **Open in Integrated Terminal**.
 
-1. In the terminal, enter the following command to install the required Python packages in a virtual environment:
+1. In the terminal, enter the following command to install the required nuget packages:
 
     ```
-    python -m venv labenv
-    .\labenv\Scripts\Activate.ps1
-    pip install -r requirements.txt
+    dotnet restore
     ```
 
-1. Open the **.env** file, replace the **your_project_endpoint** placeholder with the endpoint for your project (copied from the project deployment resource in the Microsoft Foundry extension) and ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
+1. Open the **appsettings.json** file, replace the **your_project_name** placeholder with the name of your project or copy the OpenAI endpoint from the AIFoundry portal. Ensure that the MODEL_DEPLOYMENT_NAME variable is set to your model deployment name. Use **Ctrl+S** to save the file after making these changes.
 
 Now you're ready to create an AI agent that uses a custom tool to process expenses data.
 
@@ -126,82 +116,86 @@ Now you're ready to create an AI agent that uses a custom tool to process expens
 
 > **Tip**: As you add code, be sure to maintain the correct indentation. Use the existing comments as a guide, entering the new code at the same level of indentation.
 
-1. Open the **agent-framework.py** file in the code editor.
+1. Open the **Program.cs** file in the code editor.
 
 1. Review the code in the file. It contains:
-    - Some **import** statements to add references to commonly used namespaces
-    - A *main* function that loads a file containing expenses data, asks the user for instructions, and and then calls...
-    - A **process_expenses_data** function in which the code to create and use your agent must be added
+    - Some **using** statements to add references to commonly used namespaces
+    - Code that loads a file containing expenses data, asks the user for instructions, and and then calls...
+    - A **ProcessExpensesDataAsync** function in which the code to create and use your agent must be added
 
-1. At the top of the file, after the existing **import** statement, find the comment **Add references**, and add the following code to reference the namespaces in the libraries you'll need to implement your agent:
+1. Find the comment **Add references**, and add the following code to reference the namespaces in the libraries you'll need to implement your agent:
 
-    ```python
-   # Add references
-   from agent_framework import tool, Agent
-   from agent_framework.azure import AzureOpenAIResponsesClient
-   from azure.identity import AzureCliCredential
-   from pydantic import Field
-   from typing import Annotated
+    ```csharp
+    //Add references
+    using System;
+    using System.ComponentModel;
+    using System.IO;
+    using System.Threading.Tasks;
+    using Azure.AI.OpenAI;
+    using Azure.Identity;
+    using Microsoft.Agents.AI;
+    using Microsoft.Extensions.AI;
+    using Microsoft.Extensions.Configuration;
     ```
 
 1. Near the bottom of the file, find the comment **Create a tool function for the email functionality**, and add the following code to define a function that your agent will use to send email (tools are a way to add custom functionality to agents)
 
-    ```python
-   # Create a tool function for the email functionality
-   @tool(approval_mode="never_require")
-   def submit_claim(
-       to: Annotated[str, Field(description="Who to send the email to")],
-       subject: Annotated[str, Field(description="The subject of the email.")],
-       body: Annotated[str, Field(description="The text body of the email.")]):
-           print("\nTo:", to)
-           print("Subject:", subject)
-           print(body, "\n")
+    ```csharp
+    // Create a tool function for the email functionality
+    [Description("Sends an expense claim email to the expenses team.")]
+    static string SubmitClaim(
+        [Description("Who to send the email to.")] string to,
+        [Description("The subject of the email.")] string subject,
+        [Description("The text body of the email.")] string body)
+    {
+        Console.WriteLine($"\nTo: {to}");
+        Console.WriteLine($"Subject: {subject}");
+        Console.WriteLine($"{body}\n");
+        return "Email sent successfully.";
+    }
     ```
 
     > **Note**: The function *simulates* sending an email by printing it to the console. In a real application, you'd use an SMTP service or similar to actually send the email!
 
-1. Back up above the **send_email** code, in the **process_expenses_data** function, find the comment **Create a client and initialize an agent with the tool and instructions**, and add the following code:
+1. Back up above the **SubmitClaim** code, in the **ProcessExpensesDataAsync** function, find the comment **Create a client and initialize an agent with the tool and instructions**, and add the following code:
 
-    (Be sure to maintain the indentation level)
-
-    ```python
-   # Create a client and initialize an agent with the tool and instructions
-   credential = AzureCliCredential()
-   async with (
-        Agent(
-            client=AzureOpenAIResponsesClient(
-                credential=credential,
-                deployment_name=os.getenv("MODEL_DEPLOYMENT_NAME"),
-                project_endpoint=os.getenv("PROJECT_ENDPOINT"),
-            ),
-            instructions="""You are an AI assistant for expense claim submission.
-                        At the user's request, create an expense claim and use the plug-in function to send an email to expenses@contoso.com with the subject 'Expense Claim`and a body that contains itemized expenses with a total.
-                        Then confirm to the user that you've done so. Don't ask for any more information from the user, just use the data provided to create the email.""",
-            tools=[submit_claim],
-        ) as agent,
-    ):
+    ```csharp
+    // Create a client and initialize an agent with the tool and instructions
+    AIAgent agent = new AzureOpenAIClient(new Uri(projectEndpoint), new AzureCliCredential())
+        .GetChatClient(modelDeploymentName)
+        .AsIChatClient()
+        .AsAIAgent(
+            instructions: """
+                    You are an AI assistant for expense claim submission.
+                    At the user's request, create an expense claim and use the plug-in function 
+                    to send an email to expenses@contoso.com with the subject 'Expense Claim' 
+                    and a body that contains itemized expenses with a total.
+                    Then confirm to the user that you've done so. Don't ask for any more 
+                    information from the user, just use the data provided to create the email.
+                    """,
+            tools: [AIFunctionFactory.Create(SubmitClaim)]  // Register the tool
+        );
     ```
 
-    Note that the **AzureCliCredential** object will allow your code to authenticate to your Azure account. The **AzureOpenAIResponsesClient** object includes the Foundry project settings from the .env configuration. The **Agent** object is initialized with the client, instructions for the agent, and the tool function you defined to send emails.
-
-1.
+    Note that the **AzureCliCredential** object will allow your code to authenticate to your Azure account. The **AzureOpenAIClient** object includes the Foundry project settings from the appsettings.json configuration. The **Agent** object is initialized with the client, instructions for the agent, and the tool function you defined to send emails.
 
 1. Find the comment **Use the agent to process the expenses data**, and add the following code to create a thread for your agent to run on, and then invoke it with a chat message.
 
     (Be sure to maintain the indentation level):
 
-    ```python
-   # Use the agent to process the expenses data
-   try:
-       # Add the input prompt to a list of messages to be submitted
-       prompt_messages = [f"{prompt}: {expenses_data}"]
-       # Invoke the agent for the specified thread with the messages
-       response = await agent.run(prompt_messages)
-       # Display the response
-       print(f"\n# Agent:\n{response}")
-   except Exception as e:
-       # Something went wrong
-       print (e)
+    ```csharp
+    // Use the agent to process the expenses data
+    try
+    {
+        // Combine the user prompt with the expenses data and run the agent
+        string fullPrompt = $"{prompt}: {expensesData}";
+        var response = await agent.RunAsync(fullPrompt);
+        Console.WriteLine($"\n# Agent:\n{response.Text}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex.Message);
+    }
     ```
 
 1. Review that the completed code for your agent, using the comments to help you understand what each block of code does, and then save your code changes (**CTRL+S**).
@@ -211,7 +205,7 @@ Now you're ready to create an AI agent that uses a custom tool to process expens
 1. In the integrated terminal, enter the following command to run the application:
 
     ```
-   python agent-framework.py
+   dotnet run
     ```
 
 1. When asked what to do with the expenses data, enter the following prompt:
@@ -223,8 +217,6 @@ Now you're ready to create an AI agent that uses a custom tool to process expens
 1. When the application has finished, review the output. The agent should have composed an email for an expenses claim based on the data that was provided.
 
     > **Tip**: If the app fails because the rate limit is exceeded. Wait a few seconds and try again. If there is insufficient quota available in your subscription, the model may not be able to respond.
-
-1. When you're finished, enter `deactivate` in the terminal to exit the Python virtual environment.
 
 ## Summary
 
