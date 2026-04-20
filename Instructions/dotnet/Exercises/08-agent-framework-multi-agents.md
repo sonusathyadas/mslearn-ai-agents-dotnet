@@ -123,99 +123,101 @@ Now you're ready to create the agents for your multi-agent solution! Let's get s
 
 1. At the top of the file under the comment **Add references**, and add the following code to reference the namespaces in the libraries you'll need to implement your agent:
 
-    ```python
-   # Add references
-   import asyncio
-   from typing import cast
-   from dotenv import load_dotenv
-   from agent_framework import Message
-   from agent_framework.azure import AzureAIAgentClient
-   from agent_framework.orchestrations import SequentialBuilder
-   from azure.identity import AzureCliCredential
-
-   load_dotenv()
+    ```csharp
+    // Add references
+    using Azure.AI.Agents.Persistent;
+    using Azure.Identity;
+    using Microsoft.Agents.AI;
+    using Microsoft.Agents.AI.Workflows;
+    using Microsoft.Extensions.AI;
+    using Microsoft.Extensions.Configuration;
     ```
 
-1. In the **main** function, take a moment to review the agent instructions. These instructions define the behavior of each agent in the orchestration.
+1. In the **Program.cs**, take a moment to review the agent instructions. These instructions define the behavior of each agent in the orchestration.
 
-1. Add the following code under the comment **Create the chat client**:
+1. Add the following code under the comment **Set up the Azure Foundry client**:
 
-    ```python
-   # Create the chat client
-   credential = AzureCliCredential()
-   async with (
-       AzureAIAgentClient(credential=credential) as chat_client,
-   ):
+    ```csharp
+    // Set up the Azure Foundry client
+    var persistentAgentsClient = new PersistentAgentsClient(endpoint, new AzureCliCredential());
     ```
 
-    Note that the **AzureCliCredential** object will allow your code to authenticate to your Azure account. The **AzureAIAgentClient** object will automatically include the Foundry project settings from the .env configuration.
+    Note that the **AzureCliCredential** object will allow your code to authenticate to your Azure account. 
 
 1. Add the following code under the comment **Create agents**:
 
-    (Be sure to maintain the indentation level)
+    ```csharp
+    // Create agents
+    (AIAgent summarizer, string summarizerId) = await CreateAgentAsync(persistentAgentsClient, model, "summarizer", summarizerInstructions);
+    (AIAgent classifier, string classifierId) = await CreateAgentAsync(persistentAgentsClient, model, "classifier", classifierInstructions);
+    (AIAgent action, string actionId) = await CreateAgentAsync(persistentAgentsClient, model, "action", actionInstructions);
 
-    ```python
-   # Create agents
-   summarizer = chat_client.as_agent(
-       instructions=summarizer_instructions,
-       name="summarizer",
-   )
 
-   classifier = chat_client.as_agent(
-       instructions=classifier_instructions,
-       name="classifier",
-   )
-
-   action = chat_client.as_agent(
-       instructions=action_instructions,
-       name="action",
-   )
     ```
 
 ## Create a sequential orchestration
 
-1. In the **main** function, find the comment **Initialize the current feedback** and add the following code:
+1. In the **Program.cs**, find the comment **Initialize the current feedback** and add the following code:
 
-    (Be sure to maintain the indentation level)
-
-    ```python
-   # Initialize the current feedback
-   feedback="""
-   I use the dashboard every day to monitor metrics, and it works well overall. 
-   But when I'm working late at night, the bright screen is really harsh on my eyes. 
-   If you added a dark mode option, it would make the experience much more comfortable.
-   """
+    ```csharp
+    // Initialize the current feedback
+    string feedback = """
+            I use the dashboard every day to monitor metrics, and it works well overall.
+            But when I'm working late at night, the bright screen is really harsh on my eyes.
+            If you added a dark mode option, it would make the experience much more comfortable.
+            """;
     ```
 
-1. Under the comment **Build a sequential orchestration**, add the following code to define a sequential orchestration with the agents you defined:
+1. Under the comment **Build sequential workflow: summarizer → classifier → action**, add the following code to define a sequential orchestration with the agents you defined:
 
-    ```python
-   # Build sequential orchestration
-   workflow = SequentialBuilder(participants=[summarizer, classifier, action]).build()
+    ```csharp
+    // Build sequential workflow: summarizer → classifier → action
+    var workflow = AgentWorkflowBuilder.BuildSequential([ summarizer, classifier, action ]);
     ```
 
     The agents will process the feedback in the order they are added to the orchestration.
 
-1. Add the following code under the comment **Run and collect outputs**:
+1. Add the following code under the comment **Execute with streaming and collect outputs**:
 
-    ```python
-   # Run and collect outputs
-   outputs: list[list[Message]] = []
-   async for event in workflow.run(f"Customer feedback: {feedback}", stream=True):
-       if event.type == "output":
-           outputs.append(cast(list[Message], event.data))
+    ```csharp
+    // Execute with streaming and collect outputs
+    var outputs = new List<string>();
+
+    await using StreamingRun run = await InProcessExecution.StreamAsync(
+        workflow,
+        new ChatMessage(ChatRole.User, $"Customer feedback: {feedback}")
+    );
     ```
 
     This code runs the orchestration and collects the output from each of the participating agents.
 
-1. Add the following code under the comment **Display outputs**:
+1. Add the following code under the comment **Send the turn token to trigger the agents**:
 
-    ```python
-   # Display outputs
-   if outputs:
-       for i, msg in enumerate(outputs[-1], start=1):
-           name = msg.author_name or ("assistant" if msg.role == "assistant" else "user")
-           print(f"{'-' * 60}\n{i:02d} [{name}]\n{msg.text}")
+    ```csharp
+    // Send the turn token to trigger the agents
+    await run.TrySendMessageAsync(new TurnToken(emitEvents: true));
+
+    string? lastExecutorId = null;
+    
+    await foreach (WorkflowEvent evt in run.WatchStreamAsync().ConfigureAwait(false))
+    {
+        if (evt is AgentResponseUpdateEvent streamingUpdate)
+        {
+            // Print agent name header when the active agent changes
+            if (streamingUpdate.ExecutorId != lastExecutorId)
+            {
+                if (lastExecutorId != null)
+                    Console.WriteLine(); // newline after previous agent's output
+                Console.WriteLine(new string('-', 60));
+                Console.Write($"[{streamingUpdate.ExecutorId}] ");
+                lastExecutorId = streamingUpdate.ExecutorId;
+            }
+            Console.Write(streamingUpdate.Data);
+            outputs.Add(streamingUpdate.Data?.ToString() ?? string.Empty);
+        }
+    }
+    
+    Console.WriteLine(); // final newline
     ```
 
     This code formats and displays the messages from the workflow outputs you collected from the orchestration.
@@ -229,7 +231,7 @@ Now you're ready to run your code and watch your AI agents collaborate.
 1. In the integrated terminal, enter the following command to run the application:
 
     ```
-   python agents.py
+   dotnet run
     ```
 
 1. You should see some output similar to the following:
@@ -262,8 +264,6 @@ Now you're ready to run your code and watch your AI agents collaborate.
     ```output
     I reached out to your customer support yesterday because I couldn't access my account. The representative responded almost immediately, was polite and professional, and fixed the issue within minutes. Honestly, it was one of the best support experiences I've ever had.
     ```
-
-1. When you're finished, enter `deactivate` in the terminal to exit the Python virtual environment.
 
 ## Summary
 
